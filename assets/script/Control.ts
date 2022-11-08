@@ -1,25 +1,56 @@
-import { _decorator, Component, Node, input, Input, Vec2, EventMouse, Vec3, Camera } from 'cc';
+import { _decorator, Component, Node, input, Input, Vec2, EventMouse, Vec3, Camera, CCInteger, PhysicsSystem2D, EPhysics2DDrawFlags, } from 'cc';
 const { ccclass, property } = _decorator;
 
 @ccclass('Control')
 export class Control extends Component {
 
     moveTarget: Vec2;
+
+    @property({ type: CCInteger, displayName: '移动速度' })
     speed: number = 500;
-    // 声明 Player 属性
-    @property({ type: Camera })
+
+    @property({ type: CCInteger, displayName: '相机深度' })
+    cameraZ = 100;
+
+    @property({ type: Camera, displayName: '跟随相机' })
     camera: Camera;
 
+    // 准星
+    @property({ type: Node, displayName: '准星' })
+    sightBead: Node;
+
+
+    dt: number = 0;
+
     onLoad() {
+        PhysicsSystem2D.instance.debugDrawFlags = EPhysics2DDrawFlags.Aabb |
+            EPhysics2DDrawFlags.Pair |
+            EPhysics2DDrawFlags.CenterOfMass |
+            EPhysics2DDrawFlags.Joint |
+            EPhysics2DDrawFlags.Shape;
+
         input.on(Input.EventType.MOUSE_DOWN, this.onMouseDown, this);
         input.on(Input.EventType.MOUSE_MOVE, this.onMouseMove, this);
+        input.on(Input.EventType.MOUSE_WHEEL, this.onMouseWheel, this);
+    }
+    onMouseWheel(e: EventMouse) {
+        this.cameraZ += -e.getScrollY() * this.dt;
+        if (this.cameraZ <= 30) this.cameraZ = 30;
+        if (this.cameraZ >= 300) this.cameraZ = 300;
     }
     onMouseDown(e: EventMouse) {
-        this.moveTarget = e.getLocation();
-
+        if (e.getButton() == EventMouse.BUTTON_LEFT) {
+            this.moveTarget = this.mouseLocationToWordLocation(e.getLocation());
+        }
+    }
+    mouseLocationToWordLocation(mouseLocation: Vec2): Vec2 {
+        let v3 = new Vec3(mouseLocation.x, mouseLocation.y, 0);
+        let word = this.camera.screenToWorld(v3);
+        let v2 = new Vec2(word.x, word.y);
+        return v2;
     }
     onMouseMove(e: EventMouse) {
-        this.rotationTo(e.getLocation());
+        this.rotationTo(this.mouseLocationToWordLocation(e.getLocation()));
     }
     rotationTo(targetVec2: Vec2) {
         let v2 = targetVec2;
@@ -44,22 +75,33 @@ export class Control extends Component {
         let vy = Math.sin(targetAngle) * speed;
         // if(npc.angle>=){}
 
+
         if (dist > speed) {
-            this.node.setWorldPosition(this.node.worldPosition.x + vx, this.node.worldPosition.y + vy, 1);
+            this.node.setWorldPosition(this.node.worldPosition.x + vx, this.node.worldPosition.y + vy, 0);
         } else {
-            this.node.setWorldPosition(tx, ty, 1);
+            this.node.setWorldPosition(tx, ty, 0);
             this.moveTarget = null;
         }
+        this.sightBead.active = !!this.moveTarget
     }
     moveCamera() {
+        // let v3 = this.node.getWorldPosition();
+        // v3.z
         this.camera.node.setWorldPosition(this.node.getWorldPosition());
+        this.camera.orthoHeight = this.cameraZ;
     }
     start() {
 
     }
 
     update(dt: number) {
+        this.dt = dt;
         if (this.moveTarget) this.moveTo(this.moveTarget, dt);
         if (this.camera) this.moveCamera();
+
+        if (this.moveTarget) {
+            this.sightBead.setWorldPosition(this.moveTarget.x, this.moveTarget.y, 0);
+        }
+
     }
 }
