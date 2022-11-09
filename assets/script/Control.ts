@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, input, Input, Vec2, EventMouse, Vec3, Camera, CCInteger, PhysicsSystem2D, EPhysics2DDrawFlags, } from 'cc';
+import { _decorator, Component, Node, input, Input, Vec2, EventMouse, Vec3, Camera, CCInteger, PhysicsSystem2D, EPhysics2DDrawFlags, find, } from 'cc';
 const { ccclass, property } = _decorator;
 
 @ccclass('Control')
@@ -7,12 +7,11 @@ export class Control extends Component {
     moveTarget: Vec2;
 
     @property({ type: CCInteger, displayName: '移动速度' })
-    speed: number = 500;
+    speed: number = 100;
 
     @property({ type: CCInteger, displayName: '相机深度' })
     cameraZ = 100;
 
-    @property({ type: Camera, displayName: '跟随相机' })
     camera: Camera;
 
     // 准星
@@ -23,11 +22,12 @@ export class Control extends Component {
     dt: number = 0;
 
     onLoad() {
-        PhysicsSystem2D.instance.debugDrawFlags = EPhysics2DDrawFlags.Aabb |
-            EPhysics2DDrawFlags.Pair |
-            EPhysics2DDrawFlags.CenterOfMass |
-            EPhysics2DDrawFlags.Joint |
-            EPhysics2DDrawFlags.Shape;
+        this.camera = find("Canvas/Camera").getComponent(Camera);
+        // PhysicsSystem2D.instance.debugDrawFlags = EPhysics2DDrawFlags.Aabb |
+        //     EPhysics2DDrawFlags.Pair |
+        //     EPhysics2DDrawFlags.CenterOfMass |
+        //     EPhysics2DDrawFlags.Joint |
+        //     EPhysics2DDrawFlags.Shape;
 
         input.on(Input.EventType.MOUSE_DOWN, this.onMouseDown, this);
         input.on(Input.EventType.MOUSE_MOVE, this.onMouseMove, this);
@@ -82,7 +82,6 @@ export class Control extends Component {
             this.node.setWorldPosition(tx, ty, 0);
             this.moveTarget = null;
         }
-        this.sightBead.active = !!this.moveTarget
     }
     moveCamera() {
         // let v3 = this.node.getWorldPosition();
@@ -99,9 +98,8 @@ export class Control extends Component {
         if (this.moveTarget) this.moveTo(this.moveTarget, dt);
         if (this.camera) this.moveCamera();
 
-        if (this.moveTarget) {
-            this.sightBead.setWorldPosition(this.moveTarget.x, this.moveTarget.y, 0);
-        }
+        if (this.moveTarget) this.sightBead.setWorldPosition(this.moveTarget.x, this.moveTarget.y, 0);
 
+        this.sightBead.active = !!this.moveTarget;
     }
 }
